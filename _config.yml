@@ -1,0 +1,5 @@
+title: Vera Gayduk
+#logo: relative path of the image where you want it to go
+#description: this is below the text again
+show_downloads: true 
+theme: jekyll-theme-minimal
