@@ -1,0 +1,66 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.cluster import KMeans
+
+# load dataset
+df = pd.read_csv("datasample.csv")
+
+# display the first few rows
+print(df.head())
+
+# step 2 - clean the data
+# check for missing values and fix data types
+
+print(df.isnull().sum())
+
+# convert login time to datetime
+df['LoginTime'] = pd.to_datetime(df['LoginTime'])
+
+# fill in missing values or drop rows if necessary
+df['Engagement'].fillna(df['Engagement'].mean(), inplace=True)
+
+# step 3 - data exploration
+# tihs could be anything that the company wants - but a few could include popularity of certain
+# features, or visualising time spent on said features
+
+
+#eg. feature popularity
+feature_counts = df['FeatureUsed'].value_counts()
+print(feature_counts)
+
+# Visualize time spent on features
+sns.boxplot(x='FeatureUsed', y='TimeSpent (mins)', data=df)
+plt.title("Time Spent on Features")
+plt.xticks(rotation=45)
+plt.show()
+
+#from above it can be seen that textedit and template edit are the features that people spend
+#time on the most - and that certain things can be employed to decrease the time spent to optimize user experiences
+
+# Step 4: User behavior analysis
+
+# Engagement by feature
+feature_engagement = df.groupby('FeatureUsed')['Engagement'].mean()
+print(feature_engagement)
+
+# Time spent distribution
+sns.histplot(df['TimeSpent (mins)'], kde=True)
+plt.title("Distribution of Time Spent")
+plt.xlabel("Time Spent (mins)")
+plt.ylabel("Frequency")
+plt.show()
+
+# Step 5: Advanced analysis
+
+# User Segmentation - Cluster Users by actions and time spent
+clustering_data = df[['TimeSpent (mins)', 'Actions']]
+kmeans = KMeans(n_clusters=3, random_state=42)
+df['UserSegment'] = kmeans.fit_predict(clustering_data)
+
+# Visualize user segmentation
+sns.scatterplot(x='TimeSpent (mins)', y='Actions', hue='UserSegment', data=df, palette='Set1')
+plt.title("User Segmentation by Engagement")
+plt.xlabel("Time Spent (mins)")
+plt.ylabel("Actions")
+plt.show()
