@@ -1,0 +1,305 @@
+Task 1 - base Model
+
+# Import necessary libraries
+import numpy as np
+import tensorflow as tf
+from keras.datasets import mnist
+from keras.utils import to_categorical
+from keras.models import Sequential
+from keras.layers import Dense, Flatten
+from keras.optimizers import Adam
+
+from keras.utils import plot_model
+
+# Load the MNIST data
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+# Preprocess the data
+x_train = x_train.reshape((x_train.shape[0], 28 * 28))  # Flatten images
+x_test = x_test.reshape((x_test.shape[0], 28 * 28))  # Flatten images
+x_train = x_train.astype('float32') / 255  # Normalize to [0, 1]
+x_test = x_test.astype('float32') / 255
+
+# Convert labels to one-hot encoding
+y_train = to_categorical(y_train, 10)
+y_test = to_categorical(y_test, 10)
+
+# Double-check the shapes of labels
+print(y_train.shape)  # Should output: (number of samples, 10)
+print(y_test.shape)   # Should output: (number of samples, 10)
+
+
+
+# Build the base fully connected neural network (FCNN) model
+base_model = Sequential() # Initalize a sequential model
+base_model.add(Dense(128, input_shape=(28 * 28,), activation='relu')) # First hidden layer with 128 neurons and ReLU activation
+base_model.add(Dense(10, activation='softmax'))  # Output layer with 10 units for each digit (0-9)
+# Softmax activation is used to convert the raw output into probabilities for each class
+
+# Compile the model by specifying the optimizer, loss function and evaluation metric
+base_model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model
+base_model.fit(x_train, y_train, epochs=10, batch_size=128, validation_data=(x_test, y_test)) # trains the model over 10 epochs with a batch size of 128 images per batch.
+
+# Evaluate the base model based on test data
+# The evaluate() function computes the loss and accuracy on the test dataset
+# base_loss - the final loss value on the test data
+# base_accuracy - the accuracy of the model on the test data, indicating the percentage of correct classifications
+base_loss, base_accuracy = base_model.evaluate(x_test, y_test)
+
+# print the accuracy of base model formatted to 4 decimal places
+print(f"Base Model Accuracy: {base_accuracy:.4f}")
+
+# For Task 1 - Base FCNN Model
+plot_model(base_model, to_file='base_fcnn_model.png', show_shapes=True, show_layer_names=True)
+
+
+Task 1 - Improved model 1
+
+# Build the improved model - in this case, an extra dense layer will be added
+improved_model = Sequential() # initialize a new sequential model
+improved_model.add(Dense(128, input_shape=(28 * 28,), activation='relu')) # first hidden layer with 128 neurons and ReLU activation
+improved_model.add(Dense(128, activation='relu'))  # second hidden layer with 128 neurons and ReLU activation
+improved_model.add(Dense(10, activation='softmax'))  # output layer with 10 units for the 10 digit classes (0-9) using Softmax to output the probabilities for classification
+
+# Compile the model by specifying the optimizer, loss function and evaluation metric
+improved_model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the improved model on the training data
+improved_model.fit(x_train, y_train, epochs=10, batch_size=128, validation_data=(x_test, y_test))
+
+
+# Evaluate the improved model on test data, same as the previous model
+improved_loss, improved_accuracy = improved_model.evaluate(x_test, y_test)
+print(f"Improved Model Accuracy: {improved_accuracy:.4f}")
+
+# For Task 1 - Improved FCNN Model 1
+plot_model(improved_model, to_file='improved_fcnn_model.png', show_shapes=True, show_layer_names=True)
+
+
+Task 1 - Improved Model 2
+
+from keras.layers import Dropout # import the dropout layer for regularization purposes
+
+# Build the improved model with Dropout layers for regularization
+improved_model_dropout = Sequential()
+improved_model_dropout.add(Dense(256, input_shape=(28 * 28,), activation='relu')) # First hidden layer with 256 neurons and ReLU activation
+improved_model_dropout.add(Dropout(0.3))  # 30% dropout to prevent overfitting by randomly de-activating 30% of neurons during training
+improved_model_dropout.add(Dense(128, activation='relu')) # second hidden layer with 128 neurons and ReLU activation
+improved_model_dropout.add(Dropout(0.3)) # another dropout layer to prevent overfitting in the second layer as well
+improved_model_dropout.add(Dense(10, activation='softmax')) # output layer with 10 units using softmax to output probabilities
+
+# Compile the model
+improved_model_dropout.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the improved model with dropout on the training data
+improved_model_dropout.fit(x_train, y_train, epochs=10, batch_size=128, validation_data=(x_test, y_test))
+
+# Evaluate the improved model on test data, same as previous model
+improved_loss_dropout, improved_accuracy_dropout = improved_model_dropout.evaluate(x_test, y_test)
+print(f"Improved Model Dropout Accuracy: {improved_accuracy_dropout:.4f}")
+
+# For Task 1 - Improved FCNN Model 2
+plot_model(improved_model_dropout, to_file='improved_fcnn_model_dropout.png', show_shapes=True, show_layer_names=True)
+
+
+Task 2 - Base CNN Model
+
+# Import neccessary libraries
+from keras.models import Sequential
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+from keras.optimizers import Adam
+
+
+
+# Reshape data to include channel dimension (MNIST images are grayscale, so 1 channel) for use in CNNs
+# MNIST images are grayscale meaning they have a single channel unlike RGB images which contain 3
+x_train_cnn = x_train.reshape(x_train.shape[0], 28, 28, 1) # reshape to (num_samples, height, width, channels)
+x_test_cnn = x_test.reshape(x_test.shape[0], 28, 28, 1) # reshape to rest data similarly
+
+# The original MNIST data is (num_samples, 28, 28) since each image is 28x28 pixels.
+# Convolutional layers in CNNs expect a 4D input where the last dimension is the number of channels.
+# Since these images are grayscale, we add a 1 to the shape to represent a single channel, turning the input into (28, 28, 1).
+
+
+# Build the base CNN model
+base_cnn_model = Sequential() # Initialize the CNN model as a Sequential model
+base_cnn_model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)))  # Convolutional layer with 32 filters, 3x3 kernel size and ReLU activation.
+# the input shape represents the 28x28 grayscale images with 1 channel
+base_cnn_model.add(MaxPooling2D((2, 2)))  # Max pooling layer with a 2x2 dimension to down sample the feature maps
+base_cnn_model.add(Flatten())  # Flatten the output for the dense layers, converting the 2D feature maps into a 1D vector
+base_cnn_model.add(Dense(128, activation='relu'))  # Fully connected (dense) layer with 128 neurons and ReLU activation
+base_cnn_model.add(Dense(10, activation='softmax'))  # Output layer with 10 units and softmax activation for probability distribution
+
+# Compile the model
+base_cnn_model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the base CNN model using the training data
+base_cnn_model.fit(x_train_cnn, y_train, epochs=10, batch_size=128, validation_data=(x_test_cnn, y_test))
+
+
+# Evaluate the base model on the test data
+base_cnn_loss, base_cnn_accuracy = base_cnn_model.evaluate(x_test_cnn, y_test)
+print(f"Base CNN Model Accuracy: {base_cnn_accuracy:.4f}")
+
+# For Task 2 - Base CNN Model
+plot_model(base_cnn_model, to_file='base_cnn_model.png', show_shapes=True, show_layer_names=True)
+
+
+Task 2 - CNN Improved Model 1
+
+
+# Build the improved CNN model
+improved_cnn_model = Sequential() # Initialize the improved CNN Model
+improved_cnn_model.add(Conv2D(64, (3, 3), activation='relu', input_shape=(28, 28, 1)))  # Increased filters from 32 to 64 and ReLU activation
+improved_cnn_model.add(MaxPooling2D((2, 2))) # MaxPooling layer to down sample the feature maps and reduce spatial dimensions (pool size: 2x2)
+improved_cnn_model.add(Dropout(0.25))  # Add dropout to prevent overfitting, randomly deactivating 25% of the neurons during training
+improved_cnn_model.add(Conv2D(128, (3, 3), activation='relu'))  # Another convolutional layer with 128 filters, 3x3 kernel and ReLU activation
+improved_cnn_model.add(MaxPooling2D((2, 2))) #MaxPooling layer to down sample the feature maps and reduce spatial dimensions of second hidden layer
+improved_cnn_model.add(Dropout(0.25)) # Add another dropout layer for the second hidden layer
+improved_cnn_model.add(Flatten()) # Flatten the 2D feature maps into a 1D vector
+improved_cnn_model.add(Dense(128, activation='relu')) # Fully connected (dense) layer with 128 neurons and ReLU activation
+improved_cnn_model.add(Dropout(0.5))  # Add dropout before the output layer
+improved_cnn_model.add(Dense(10, activation='softmax'))  # Output layer with 10 units and softmax activation for probabilistic distribution
+
+# Compile the model
+improved_cnn_model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the improved CNN model on the training data
+improved_cnn_model.fit(x_train_cnn, y_train, epochs=10, batch_size=128, validation_data=(x_test_cnn, y_test))
+
+
+# Evaluate the improved model on the training data
+improved_cnn_loss, improved_cnn_accuracy = improved_cnn_model.evaluate(x_test_cnn, y_test)
+print(f"Improved CNN Model Accuracy: {improved_cnn_accuracy:.4f}")
+
+# For Task 2 - Improved CNN Model 1
+plot_model(improved_cnn_model, to_file='improved_cnn_model.png', show_shapes=True, show_layer_names=True)
+
+
+Task 2 - CNN Improved Model 2
+
+# Reduced filter size in convolutional layers
+optimized_cnn_model = Sequential() # Initialize the improved CNN Model
+optimized_cnn_model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)))  # Reduced filters from 64 to 32 and ReLU activation
+optimized_cnn_model.add(MaxPooling2D((2, 2))) # MaxPooling layer to down sample the feature maps and reduce spatial dimensions (pool size: 2x2)
+optimized_cnn_model.add(Dropout(0.25)) # Add a dropout layer to randomly deactivate 25% of the neurons during training to prevent overfitting
+optimized_cnn_model.add(Conv2D(64, (3, 3), activation='relu'))  # Reduced filters from 128 to 64 and ReLU activation
+optimized_cnn_model.add(MaxPooling2D((2, 2))) # Another MaxPooling layer to down sample the feature maps of the second hidden layer
+optimized_cnn_model.add(Dropout(0.25)) # Another dropout layer to prevent overfitting of the second hidden layer
+optimized_cnn_model.add(Flatten()) # Flatten the 2D feature maps into a 1D vector
+optimized_cnn_model.add(Dense(256, activation='relu'))  # Increasing the dense layers to 256
+optimized_cnn_model.add(Dropout(0.5))  # Add dropout before the output layer
+optimized_cnn_model.add(Dense(10, activation='softmax'))  # Output layer with 10 units and softmax activation for probabilistic distribution
+
+# Compile the model
+optimized_cnn_model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the optimized CNN model on the training data
+optimized_cnn_model.fit(x_train_cnn, y_train, epochs=10, batch_size=128, validation_data=(x_test_cnn, y_test))
+
+
+# Evaluate the optimized model on the training data
+optimized_cnn_loss, optimized_cnn_accuracy = optimized_cnn_model.evaluate(x_test_cnn, y_test)
+print(f"Optimized CNN Model Accuracy: {optimized_cnn_accuracy:.4f}")
+
+# For Task 2 - Improved CNN Model 2
+plot_model(optimized_cnn_model, to_file='improved_cnn_model.png', show_shapes=True, show_layer_names=True)
+
+
+Task 3 - Experiment 1 - RMSProp optimizer
+
+from keras.optimizers import RMSprop # Import RMSProp optimizer
+
+# Using RMSprop - initialize RMSProp optimizer with a learning rate of 0.001
+optimizer_rmsprop = RMSprop(learning_rate=0.001)
+
+
+# Build the CNN model (same structure as the improved model)
+task3_cnn_model = Sequential() # Initialize the CNN model
+task3_cnn_model.add(Conv2D(64, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+task3_cnn_model.add(MaxPooling2D((2, 2)))
+task3_cnn_model.add(Dropout(0.25))
+task3_cnn_model.add(Conv2D(128, (3, 3), activation='relu'))
+task3_cnn_model.add(MaxPooling2D((2, 2)))
+task3_cnn_model.add(Dropout(0.25))
+task3_cnn_model.add(Flatten())
+task3_cnn_model.add(Dense(256, activation='relu'))
+task3_cnn_model.add(Dropout(0.5))
+task3_cnn_model.add(Dense(10, activation='softmax'))
+
+# Compile the CNN model using RMSProp as the optimizer, categorical cross-entropy loss and accuracy metric
+task3_cnn_model.compile(optimizer=optimizer_rmsprop, loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model on the training data
+task3_cnn_model.fit(x_train_cnn, y_train, epochs=10, batch_size=128, validation_data=(x_test_cnn, y_test))
+
+# Evaluate the model on the test data  and print accuracy
+task3_cnn_loss, task3_cnn_accuracy = task3_cnn_model.evaluate(x_test_cnn, y_test)
+print(f"Task 3 (RMSprop) CNN Model Accuracy: {task3_cnn_accuracy:.4f}")
+
+
+
+# For Task 3 -  Experiment 1
+plot_model(task3_cnn_model, to_file='improved_cnn_model.png', show_shapes=True, show_layer_names=True)
+
+Task 3 -  Learning Rate Increase and Decrease
+
+
+# Using RMSprop
+optimizer_rmsprop = RMSprop(learning_rate=0.0001) # tuning to a lower learning rate to enable more controlled, precise updates
+
+
+# Build the CNN model (same structure as the improved model)
+task3_cnn_model = Sequential()
+task3_cnn_model.add(Conv2D(64, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+task3_cnn_model.add(MaxPooling2D((2, 2)))
+task3_cnn_model.add(Dropout(0.25))
+task3_cnn_model.add(Conv2D(128, (3, 3), activation='relu'))
+task3_cnn_model.add(MaxPooling2D((2, 2)))
+task3_cnn_model.add(Dropout(0.25))
+task3_cnn_model.add(Flatten())
+task3_cnn_model.add(Dense(256, activation='relu'))
+task3_cnn_model.add(Dropout(0.5))
+task3_cnn_model.add(Dense(10, activation='softmax'))
+
+# Compile the model using RMSprop with a lower learning rate
+task3_cnn_model.compile(optimizer=optimizer_rmsprop, loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model on the training data
+task3_cnn_model.fit(x_train_cnn, y_train, epochs=10, batch_size=128, validation_data=(x_test_cnn, y_test))
+
+# Evaluate the model on the test data and print accuracy
+task3_cnn_loss, task3_cnn_accuracy = task3_cnn_model.evaluate(x_test_cnn, y_test)
+print(f"Task 3 (RMSprop) CNN Model Accuracy: {task3_cnn_accuracy:.4f}")
+
+
+
+
+# Using RMSprop
+optimizer_rmsprop = RMSprop(learning_rate=0.1) # tuning to a higher learning rate for faster weight updates
+
+
+# Build the CNN model (same structure as the improved model)
+task3_cnn_model = Sequential()
+task3_cnn_model.add(Conv2D(64, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+task3_cnn_model.add(MaxPooling2D((2, 2)))
+task3_cnn_model.add(Dropout(0.25))
+task3_cnn_model.add(Conv2D(128, (3, 3), activation='relu'))
+task3_cnn_model.add(MaxPooling2D((2, 2)))
+task3_cnn_model.add(Dropout(0.25))
+task3_cnn_model.add(Flatten())
+task3_cnn_model.add(Dense(256, activation='relu'))
+task3_cnn_model.add(Dropout(0.5))
+task3_cnn_model.add(Dense(10, activation='softmax'))
+
+# Compile the model with RMSProp optimizer and higher learning rate
+task3_cnn_model.compile(optimizer=optimizer_rmsprop, loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model on the training data
+task3_cnn_model.fit(x_train_cnn, y_train, epochs=10, batch_size=128, validation_data=(x_test_cnn, y_test))
+
+# Evaluate the model on the test data and print accuracy
+task3_cnn_loss, task3_cnn_accuracy = task3_cnn_model.evaluate(x_test_cnn, y_test)
+print(f"Task 3 (RMSprop) CNN Model Accuracy: {task3_cnn_accuracy:.4f}")
