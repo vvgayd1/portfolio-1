@@ -1,0 +1,44 @@
+class ScoreEntry:
+    def __init__(self, name, score):
+        # Initialize the ScoreEntry object with a name and a score
+        self.name = name
+        self.score = score
+
+def get_score(score_entry):
+    # this returns the score from a ScoreEntry object
+    return score_entry.score
+
+
+class Scoreboard:
+    def __init__(self):
+        # Initialize the Scoreboard with an empty list to hold ScoreEntry objects
+        self.scores = [] # each element is a ScoreEntry object
+
+    def add_score(self, name, score):
+        # This creates a new ScoreEntry object with the given name and score and appends it
+        # to the scoreboard's list of scores
+        new_entry = ScoreEntry(name, score)
+        self.scores.append(new_entry)
+
+    def print_leaderboard(self):
+        # Sort the scores in descending order based on the score value
+        sorted_scores = sorted(self.scores, key=get_score, reverse=True)
+
+        # Slices the list to get the top 3 scores
+        top_three = sorted_scores[:3]
+
+        # Prints each entry and name in the top three
+        for entry in top_three:
+            print(f"{entry.name}: {entry.score}")
+
+# Create an instance of the Scoreboard
+scoreboard = Scoreboard()
+
+# Add scores for different players to the scoreboard
+scoreboard.add_score('Alice', 7821)
+scoreboard.add_score('Bob', 12103)
+scoreboard.add_score('Charlie', 8762)
+scoreboard.add_score('Denise', 6573)
+
+# Print the leaderboard showing the top 3 scores
+scoreboard.print_leaderboard()
