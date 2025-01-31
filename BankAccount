@@ -1,0 +1,58 @@
+class BankAccount:
+    def __init__(self, name, initial_balance):
+        # Initialize a BankAccount object with the account holder's name and initial balance
+        self.name = name
+        self.balance = initial_balance
+
+    def deposit(self, amount):
+        # This adds the specified amount to the account balance
+        self.balance += amount
+
+    def withdraw(self, amount):
+        # Attempts to subtract the specified amount from the account balance
+        # If the withdrawal would result in a negative balance, raises a ValueError
+        if self.balance < amount:
+            raise ValueError("Balance would be negative after withdrawal")
+        self.balance -= amount
+
+def transfer_funds(amount, from_account, to_account):
+    # Transfers the specified amount from one account to another as well as withdraws the amount
+    # from the 'from_account' and deposits it into the 'to_account'
+    # The order ensures that if the withdrawal fails due to insufficient funds, a valueerror is raised
+    # and the deposit does not occur
+    from_account.withdraw(amount)
+    to_account.deposit(amount)
+
+def print_balances(account_a, account_b):
+    # Prints the current balances of two accounts in a formatted manner
+    print('== Account balances ==')
+    print(f'  {account_a.name}: ${account_a.balance:.2f}')
+    print(f'  {account_b.name}: ${account_b.balance:.2f}')
+
+# Creates two BankAccount instances with initial balances of $100
+account_a = BankAccount('Alice', 100)
+account_b = BankAccount('Bob', 100)
+print_balances(account_a, account_b)
+
+# Starts an interactive while loop to allow multiple transfers between accounts
+another_transfer = 'y'
+while another_transfer == 'y':  # this prompts the function to iterate to the next line if y is inputted
+    amount = float(input('Enter transfer amount ($): '))  # this then prompts the user to enter the transfer amount
+
+    # Perform the transfer from account_a to account_b
+    try:
+        # Attempts to perform the transfer from account_a to account_b
+        # If the withdrawal amount is greater than the balance an account_a, a ValueError will be raised
+        transfer_funds(amount, account_a, account_b)
+    except ValueError as e:
+        # If an error occurs (insufficient funds), print an error message
+        print("<< Error transferring funds >>")  # Prints the error message
+        print_balances(account_a, account_b)  # This Ensures balances remain unchanged after the failed transfer attempt
+
+    else:
+        # If no error occurs, print the updated balances after the successful transfer
+        print_balances(account_a, account_b)
+
+    # This line then prompts the user if they want to perform another transfer, if y then the while loop is repeated again
+    # if n then the loop is exited
+    another_transfer = input('Perform another transfer? (y/n): ')
