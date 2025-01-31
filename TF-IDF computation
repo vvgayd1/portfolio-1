@@ -1,0 +1,142 @@
+# Import the necessary libraries
+
+import numpy as np # Import the NumPY library for numerical operations
+import pandas as pd # Import the pandas library for data manipulation
+from collections import Counter # Import Counter from collections for counting hashable objects
+import math # Import the math module for mathematical functions
+import re # Import the regular expression module for pattern matching
+from nltk.tokenize import word_tokenize # Import word_tokenize from NLTK for tokenizing words
+import nltk # Import the Natural Language Toolkit (NLTK) for common stop words
+from nltk.corpus import stopwords # Import stopwords from NLTK for common stopwords
+from nltk.stem import WordNetLemmatizer # Import WordNetLemmatizer from NLTK for lemmatization
+
+# Download relevant NLTK resources
+nltk.download('punkt') # Downloads the Punkt tokenizer models
+nltk.download('stopwords') # Downloads NLTK's stopwords corpus
+nltk.download('wordnet') # Download the WordNet lexical database
+
+
+# Define or load the corpus intended to clean
+my_corpus = [
+    "Today it is raining outside",
+    "It is going to rain today",
+    "It will not be raining when I go for a run",
+    "I will go for a run today"
+]
+
+
+# This function pre-processes text documents by converting them to lowercase, removing punctuation, URLs, usernames
+# tokenizing, removing stopwords and lemmatizing
+
+# Parameters:
+# documents - a string or a list of strings representing the text document(s) to preprocess
+# Returns:
+# tokens - a list of preprocessed tokens if input is a string, or a list of strings representing preprocessed documents
+# if input is a list of strings.
+
+def preprocess_text(documents):
+    if isinstance(documents, str): # Checks if input is a single string
+        text = documents.lower() # Converts text to lowercase
+        text = re.sub(r'[^\w\s]', '', text) # Removes punctuation
+        text = re.sub(r'http\S+', '', text) # Removes URLs
+        text = re.sub(r'@\w+', '', text) # Removes usernames
+        tokens = word_tokenize(text) # Tokenizes text
+        stop_words = set(stopwords.words('english')) # Gets English stopwords
+        tokens = [token for token in tokens if token not in stop_words] # Removes stopwords
+        lemmatizer = WordNetLemmatizer() # Initializes WordNet lemmatizer
+        tokens = [lemmatizer.lemmatize(token) for token in tokens] # Lemmatizes tokens
+        return tokens # Returns preprocessed tokens
+    elif isinstance(documents, list): # Checks if input is a list of strings
+        return [' '.join(preprocess_text(doc)) for doc in documents]  # Preprocesses each document and joins tokens into a single string
+    else:
+        raise TypeError("Input must be a string or a list of strings.") # Raises an error for invalid input type
+
+# This function computes the Term Frequency (TF) for each word in each document
+# Parameters:
+# documents - a list of strings representing the preprocessed documents
+# Returns:
+# tf - a dictionary where each key is a document ID and each value is a dictionary of word frequencies
+
+def compute_tf(documents):
+    tf = [] # Initialises a list to store TF for each document
+    preprocessed_docs = preprocess_text(documents) # Preprocess the documents
+    for doc in preprocessed_docs: # Iterates over the preprocessed documents
+        word_counts = Counter(doc.split())  # Counts the occurences of each word
+        total_words = len(doc.split()) # Gets the total number of words in the document
+        tf.append({word: word_counts[word] / total_words for word in word_counts}) # Computes TF for each word
+    return tf # Returns TF for all documents
+
+# This function computes the Inverse Document Frequency (IDF) for each unique word in the corpus.
+# Parameters:
+# documents - a list of strings representing the preprocessed documents
+# Returns:
+# idf - a dictionary where each key is a unique word and each value is the IDF score
+
+def compute_idf(documents):
+    idf = {} # Initializes dictionary to store IDF for each word
+    total_docs = len(documents) # Gets the total number of documents in the corpus
+    all_words = set([word for doc in documents for word in doc.split()]) # Gets all unique words in the corpus
+    for word in all_words: # Iterates over unique words
+        df = sum(1 for doc in documents if word in doc.split()) # Counts the number of documents containing the word
+        idf[word] = math.log10(total_docs / df) # Computes the IDF for the word
+    return idf # Returns IDF for all unique words
+
+# This function computes the TF-IDF weights for words in a set of training documents
+# Parameters:
+# train_docs -  a list of strings representing the training documents
+# Returns:
+# tfidf_weights - a dictionary where keys are document indices and values are dictionaries containing the TF-IDF weights
+# for each word in the document
+# tf_df - a pandas DataFrame containing the TF values for each word in each document
+# idf_df - a pandas DataFrame containing the IDF values for each word in the corpus
+
+def compute_tfidf_weights(train_docs):
+    preprocessed_docs = preprocess_text(train_docs) # Preprocesses the training documents
+    tokens = [doc.split() for doc in preprocessed_docs] # Tokenizes the preprocessed documents
+    tf = compute_tf(tokens) # Computes TF for tokens
+    idf = compute_idf(preprocessed_docs) # Computes IDF for preprocessed documents
+    tfidf_weights = {} # Initializes dictionary to store TF-IDF weights
+    for i, doc in enumerate(tokens): # Iterates over tokenized documents
+        tfidf_weights[i] = {} # Initializes dictionary for TF-IDF weights of current document
+        for word in doc: # Iterates over words in the document
+            if word in tf[i]:  # Checks if the word exists in the TF dictionary
+                tfidf_weights[i][word] = tf[i][word] * idf[word] # Computes TF-IDF weight
+            else:
+                tfidf_weights[i][word] = 0  # If word not in TF, assumes TF is 0
+    tf_df = pd.DataFrame(tf) # Creates a DataFrame from TF dictionary
+    idf_df = pd.DataFrame.from_dict(idf, orient='index', columns=['idf']).reset_index().rename(
+        columns={'index': 'word'}) # Creats DataFrame from IDF dictionary
+    return tfidf_weights, tf_df, idf_df # Returns TF-IDF weights, TF DataFrame and IDF DataFrame
+
+
+# This function computes the TF-IDF vector for a given word
+# Parameters:
+# word - a string representing the word for which to compute the TF-IDF vector
+# tf_df - a pandas DataFrame containing the TF values for each word in each document
+# idf_df - a pandas DataFrame containing the IDF values for each word in the corpus
+# Returns:
+# tfidf_vector - a NumPy array representing the TF-IDF vector for the given word
+
+def word_tfidf_vector(word, tf_df, idf_df):
+    preprocessed_word = preprocess_text(word) # Preprocesses the word
+    if preprocessed_word not in tf_df.columns or preprocessed_word not in idf_df.index:
+        return None # Returns none if word is not found in TF or IDF DataFrames
+    tf_vector = tf_df[preprocessed_word] # Gets TF vector for the word
+    idf_value = idf_df.loc[preprocessed_word, 'idf'] # Gets IDF value for the word
+    tfidf_vector = tf_vector * idf_value # Computes TF-IDF vector
+    return tfidf_vector # Returns TF-IDF vector
+
+# Calculate TF-IDF weights for the corpus
+tfidf_weights, tf_df, idf_df = compute_tfidf_weights(my_corpus)
+
+print("TF-IDF Weights:") # Displays the TF-IDF weights
+for doc_id, weights in tfidf_weights.items(): # Iterates over document indices and TF-IDF weights
+    print(f"Document {doc_id}:") # Prints document ID
+    for word, tfidf in weights.items(): # Iterates over words and TF-IDF weights in the document
+        print(f"   {word}: {tfidf}") # Prints word TF-IDF weight
+
+print("\nTF DataFrame:") # Displays TF DataFrame
+print(tf_df) # Prints the TF DataFrame
+
+print("\nIDF DataFrame:") # Displays IDF DataFrame
+print(idf_df) # Prints the IDF DataFrame
