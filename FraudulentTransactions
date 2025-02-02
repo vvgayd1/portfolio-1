@@ -1,0 +1,113 @@
+this python script will predict credit card fraud using the random forest classifier
+
+# first import necessary libraries 
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# load dataset
+df = pd.read_csv('creditcard.csv')
+
+# display first few rows
+print(df.head())
+
+   Time        V1        V2        V3        V4        V5        V6        V7  \
+0   0.0 -1.359807 -0.072781  2.536347  1.378155 -0.338321  0.462388  0.239599   
+1   0.0  1.191857  0.266151  0.166480  0.448154  0.060018 -0.082361 -0.078803   
+2   1.0 -1.358354 -1.340163  1.773209  0.379780 -0.503198  1.800499  0.791461   
+3   1.0 -0.966272 -0.185226  1.792993 -0.863291 -0.010309  1.247203  0.237609   
+4   2.0 -1.158233  0.877737  1.548718  0.403034 -0.407193  0.095921  0.592941   
+
+         V8        V9  ...       V21       V22       V23       V24       V25  \
+0  0.098698  0.363787  ... -0.018307  0.277838 -0.110474  0.066928  0.128539   
+1  0.085102 -0.255425  ... -0.225775 -0.638672  0.101288 -0.339846  0.167170   
+2  0.247676 -1.514654  ...  0.247998  0.771679  0.909412 -0.689281 -0.327642   
+3  0.377436 -1.387024  ... -0.108300  0.005274 -0.190321 -1.175575  0.647376   
+4 -0.270533  0.817739  ... -0.009431  0.798278 -0.137458  0.141267 -0.206010   
+
+        V26       V27       V28  Amount  Class  
+0 -0.189115  0.133558 -0.021053  149.62    0.0  
+1  0.125895 -0.008983  0.014724    2.69    0.0  
+2 -0.139097 -0.055353 -0.059752  378.66    0.0  
+3 -0.221929  0.062723  0.061458  123.50    0.0  
+4  0.502292  0.219422  0.215153   69.99    0.0  
+
+[5 rows x 31 columns]
+
+# Step 1: Handle missing values (for simplicity, we'll drop rows with missing values)
+df = df.dropna()
+
+# Features and target variable
+X = df.drop('Class', axis=1)
+y = df['Class']
+
+# split the dataset into training and testing subsets, because we need to train the model on one part of the data, then evaluate its performance on the unseen part of the data. This ensures that the model generalises well to new data, not just the data it has seen during training
+
+# WHy 80/20 split? This is a very common training split, but it can be played around with.
+
+# The features are then standardised using StandardScaler to have a mean of 0 and a SD of 1. This is good practice to avoid discrepancies among features
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Feature scaling - important for the 'Amount' feature
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Initialize Random Forest Classifier with class weighting to handle imbalance
+rf_model = RandomForestClassifier(n_estimators=100, class_weight='balanced', random_state=42)
+rf_model.fit(X_train_scaled, y_train)
+
+# Predict on the test set
+y_pred = rf_model.predict(X_test_scaled)
+y_pred_prob = rf_model.predict_proba(X_test_scaled)[:, 1]  # Probabilities for the positive class (fraud)
+
+# Print classification report
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+Classification Report:
+              precision    recall  f1-score   support
+
+         0.0       1.00      1.00      1.00     43899
+         1.0       0.98      0.74      0.85        82
+
+    accuracy                           1.00     43981
+   macro avg       0.99      0.87      0.92     43981
+weighted avg       1.00      1.00      1.00     43981
+
+# Here, class_weight='balanced' adjusts weights inversley proportional to the class frequencies. This is done because the dataset used has an imbalance in classes which would skew results if this feature was not implemented. Class imbalance exists in this case because fraud transaction numbers are very small compared to non-fraud transactions.
+
+# Confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Non-Fraud', 'Fraud'], yticklabels=['Non-Fraud', 'Fraud'])
+plt.title("Confusion Matrix")
+plt.show()
+
+# the confusion matrix visualises the amount of non-fraud transactions compared to the fraudulent, including TP, FP and FN.
+
+from sklearn.metrics import precision_recall_curve, auc
+
+# Precision-Recall curve and AUPRC
+precision, recall, _ = precision_recall_curve(y_test, y_pred_prob)
+auprc = auc(recall, precision)
+
+# Plot Precision-Recall curve
+plt.figure(figsize=(8, 6))
+plt.plot(recall, precision, color='b', label=f'AUPRC = {auprc:.2f}')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Precision-Recall Curve')
+plt.legend(loc='best')
+plt.show()
+
+print(f"AUPRC: {auprc:.2f}")
+
+# precision-recall curve - plots precision vs recall for different thresholds and the AUPRC (Area Under the precision-recall curve) is a single number that summarises the models' performance. 0.84 = 84% accuracy of the model
+
+# Why this is used: since the data is highly imbalanced, this is used rather than a ROC curve
+
